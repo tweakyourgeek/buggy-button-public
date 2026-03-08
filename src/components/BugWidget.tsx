@@ -107,7 +107,7 @@ export default function BugWidget() {
               </button>
             </div>
 
-            <BugReportForm onClose={handleClose} screenshot={screenshot} />
+            <BugReportForm onClose={handleClose} screenshot={screenshot} metadata={metadata} />
           </div>
         </div>
       )}

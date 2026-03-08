@@ -35,6 +35,10 @@ export default function BugReportForm({ onClose, screenshot, metadata }: { onClo
       severity: severity as "low" | "medium" | "high" | "critical",
       email: email || undefined,
       screenshot: finalScreenshot || undefined,
+      url: metadata?.url,
+      userAgent: metadata?.userAgent,
+      viewportSize: metadata?.viewportSize,
+      consoleErrors: metadata?.consoleErrors,
     });
     setSubmitted(true);
     setTimeout(onClose, 1800);
