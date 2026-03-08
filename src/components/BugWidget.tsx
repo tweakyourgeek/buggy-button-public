@@ -11,15 +11,24 @@ export default function BugWidget() {
   const handleOpen = useCallback(async () => {
     setCapturing(true);
     try {
-      const target =
-        window.parent?.document?.body ?? document.body;
+      let target = document.body;
+      try {
+        // Try parent document for iframe embedding
+        if (window.parent && window.parent.document) {
+          target = window.parent.document.body;
+        }
+      } catch {
+        // Cross-origin — use current document
+      }
       const canvas = await html2canvas(target, {
         useCORS: true,
         logging: false,
-        scale: window.devicePixelRatio * 0.5, // keep it small
+        scale: Math.min(window.devicePixelRatio, 1),
+        ignoreElements: (el) => el.getAttribute?.("aria-label") === "Report a bug",
       });
       setScreenshot(canvas.toDataURL("image/png"));
-    } catch {
+    } catch (err) {
+      console.error("Screenshot capture failed:", err);
       setScreenshot(null);
     }
     setCapturing(false);
