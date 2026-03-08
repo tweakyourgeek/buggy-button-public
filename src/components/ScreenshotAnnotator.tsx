@@ -146,7 +146,7 @@ export default function ScreenshotAnnotator({ screenshot, onSave }: Props) {
     if (textValue.trim()) {
       setActions((prev) => [
         ...prev,
-        { tool: "text", color, lineWidth: 3, start: textInput.pos, text: textValue },
+        { tool: "text", color, lineWidth, start: textInput.pos, text: textValue },
       ]);
     }
     setTextInput({ pos: { x: 0, y: 0 }, visible: false });
