@@ -168,7 +168,7 @@ export default function ScreenshotAnnotator({ screenshot, onSave }: Props) {
     const action: DrawAction = {
       tool,
       color,
-      lineWidth: 3,
+      lineWidth,
       ...(tool === "pen" ? { points: [pos] } : { start: pos, end: pos }),
     };
     setCurrentAction(action);
