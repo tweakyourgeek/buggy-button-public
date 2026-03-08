@@ -95,6 +95,17 @@ export default function BugReportForm({ onClose, screenshot }: { onClose: () => 
         />
       </div>
 
+      {screenshot && (
+        <div className="space-y-1.5">
+          <Label>Screenshot</Label>
+          <img
+            src={screenshot}
+            alt="Captured screenshot"
+            className="w-full rounded-lg border border-border"
+          />
+        </div>
+      )}
+
       <div className="flex gap-2 pt-2">
         <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
           Cancel
