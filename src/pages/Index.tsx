@@ -1,4 +1,5 @@
 import BugWidget from "@/components/BugWidget";
+import { Link } from "react-router-dom";
 
 const Index = () => (
   <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-8">
