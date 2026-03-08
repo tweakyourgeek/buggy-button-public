@@ -246,6 +246,20 @@ export default function ScreenshotAnnotator({ screenshot, onSave }: Props) {
 
         <span className="mx-1 h-5 w-px bg-border" />
 
+        {[2, 3, 5, 8].map((w) => (
+          <button
+            key={w}
+            type="button"
+            onClick={() => setLineWidth(w)}
+            title={`Size ${w}`}
+            className={`flex items-center justify-center h-6 w-6 rounded-md transition-colors ${lineWidth === w ? "bg-bug-accent text-bug-accent-foreground" : "text-muted-foreground hover:bg-muted"}`}
+          >
+            <span className="rounded-full bg-current" style={{ width: w + 2, height: w + 2 }} />
+          </button>
+        ))}
+
+        <span className="mx-1 h-5 w-px bg-border" />
+
         <button type="button" className="rounded-md p-1.5 text-muted-foreground hover:bg-muted" onClick={undo} title="Undo" disabled={actions.length === 0}>
           <Undo2 size={16} />
         </button>
