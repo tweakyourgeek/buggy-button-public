@@ -11,7 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { bugStore } from "@/lib/bugStore";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Pencil } from "lucide-react";
+import ScreenshotAnnotator from "./ScreenshotAnnotator";
 
 export default function BugReportForm({ onClose, screenshot }: { onClose: () => void; screenshot?: string | null }) {
   const [title, setTitle] = useState("");
@@ -19,6 +20,10 @@ export default function BugReportForm({ onClose, screenshot }: { onClose: () => 
   const [severity, setSeverity] = useState<string>("medium");
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [annotatedScreenshot, setAnnotatedScreenshot] = useState<string | null>(null);
+  const [annotating, setAnnotating] = useState(false);
+
+  const finalScreenshot = annotatedScreenshot || screenshot;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +33,7 @@ export default function BugReportForm({ onClose, screenshot }: { onClose: () => 
       description,
       severity: severity as "low" | "medium" | "high" | "critical",
       email: email || undefined,
-      screenshot: screenshot || undefined,
+      screenshot: finalScreenshot || undefined,
     });
     setSubmitted(true);
     setTimeout(onClose, 1800);
@@ -97,12 +102,34 @@ export default function BugReportForm({ onClose, screenshot }: { onClose: () => 
 
       {screenshot && (
         <div className="space-y-1.5">
-          <Label>Screenshot</Label>
-          <img
-            src={screenshot}
-            alt="Captured screenshot"
-            className="w-full rounded-lg border border-border"
-          />
+          <div className="flex items-center justify-between">
+            <Label>Screenshot</Label>
+            {!annotating && (
+              <button
+                type="button"
+                onClick={() => setAnnotating(true)}
+                className="flex items-center gap-1 text-xs text-bug-accent hover:underline"
+              >
+                <Pencil size={12} /> Annotate
+              </button>
+            )}
+          </div>
+
+          {annotating ? (
+            <ScreenshotAnnotator
+              screenshot={screenshot}
+              onSave={(data) => {
+                setAnnotatedScreenshot(data);
+                setAnnotating(false);
+              }}
+            />
+          ) : (
+            <img
+              src={finalScreenshot || screenshot}
+              alt="Captured screenshot"
+              className="w-full rounded-lg border border-border"
+            />
+          )}
         </div>
       )}
 
