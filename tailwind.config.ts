@@ -57,6 +57,14 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        "bug-accent": {
+          DEFAULT: "hsl(var(--bug-accent))",
+          foreground: "hsl(var(--bug-accent-foreground))",
+        },
+        "bug-fab": {
+          DEFAULT: "hsl(var(--bug-fab))",
+          foreground: "hsl(var(--bug-fab-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
