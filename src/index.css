@@ -38,6 +38,12 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
+    --bug-accent: 38 92% 50%;
+    --bug-accent-foreground: 0 0% 100%;
+    --bug-surface: 220 16% 96%;
+    --bug-fab: 220 20% 18%;
+    --bug-fab-foreground: 0 0% 100%;
+
     --sidebar-background: 0 0% 98%;
 
     --sidebar-foreground: 240 5.3% 26.1%;
