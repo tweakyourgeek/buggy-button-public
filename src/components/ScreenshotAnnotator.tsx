@@ -37,6 +37,7 @@ export default function ScreenshotAnnotator({ screenshot, onSave }: Props) {
 
   const [tool, setTool] = useState<Tool>("pen");
   const [color, setColor] = useState<Color>(COLORS[0]);
+  const [lineWidth, setLineWidth] = useState(3);
   const [actions, setActions] = useState<DrawAction[]>([]);
   const [currentAction, setCurrentAction] = useState<DrawAction | null>(null);
   const [drawing, setDrawing] = useState(false);
@@ -145,7 +146,7 @@ export default function ScreenshotAnnotator({ screenshot, onSave }: Props) {
     if (textValue.trim()) {
       setActions((prev) => [
         ...prev,
-        { tool: "text", color, lineWidth: 3, start: textInput.pos, text: textValue },
+        { tool: "text", color, lineWidth, start: textInput.pos, text: textValue },
       ]);
     }
     setTextInput({ pos: { x: 0, y: 0 }, visible: false });
@@ -167,7 +168,7 @@ export default function ScreenshotAnnotator({ screenshot, onSave }: Props) {
     const action: DrawAction = {
       tool,
       color,
-      lineWidth: 3,
+      lineWidth,
       ...(tool === "pen" ? { points: [pos] } : { start: pos, end: pos }),
     };
     setCurrentAction(action);
@@ -241,6 +242,20 @@ export default function ScreenshotAnnotator({ screenshot, onSave }: Props) {
             style={{ backgroundColor: c }}
             title="Color"
           />
+        ))}
+
+        <span className="mx-1 h-5 w-px bg-border" />
+
+        {[2, 3, 5, 8].map((w) => (
+          <button
+            key={w}
+            type="button"
+            onClick={() => setLineWidth(w)}
+            title={`Size ${w}`}
+            className={`flex items-center justify-center h-6 w-6 rounded-md transition-colors ${lineWidth === w ? "bg-bug-accent text-bug-accent-foreground" : "text-muted-foreground hover:bg-muted"}`}
+          >
+            <span className="rounded-full bg-current" style={{ width: w + 2, height: w + 2 }} />
+          </button>
         ))}
 
         <span className="mx-1 h-5 w-px bg-border" />
