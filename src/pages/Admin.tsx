@@ -307,7 +307,27 @@ function BugDetail({
                   <span className="text-foreground text-xs break-all">{bug.userAgent}</span>
                 </div>
               )}
-              {!bug.url && !bug.userAgent && (
+              {bug.viewportSize && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Monitor size={14} className="text-muted-foreground" />
+                  <span className="text-muted-foreground">Viewport:</span>
+                  <span className="text-foreground">{bug.viewportSize}</span>
+                </div>
+              )}
+              {bug.consoleErrors && bug.consoleErrors.length > 0 && (
+                <div className="flex items-start gap-2 text-sm">
+                  <AlertTriangle size={14} className="text-destructive mt-0.5" />
+                  <div>
+                    <span className="text-muted-foreground">Console Errors ({bug.consoleErrors.length}):</span>
+                    <ul className="mt-1 space-y-1">
+                      {bug.consoleErrors.map((err, i) => (
+                        <li key={i} className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1 break-all">{err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+              {!bug.url && !bug.userAgent && !bug.viewportSize && (
                 <p className="text-sm text-muted-foreground">No browser metadata captured.</p>
               )}
             </CardContent>

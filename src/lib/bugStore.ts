@@ -13,6 +13,8 @@ export interface BugReport {
   updatedAt: Date;
   url?: string;
   userAgent?: string;
+  viewportSize?: string;
+  consoleErrors?: string[];
 }
 
 // Mock data for the admin dashboard

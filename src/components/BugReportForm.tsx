@@ -13,8 +13,9 @@ import {
 import { bugStore } from "@/lib/bugStore";
 import { CheckCircle, Pencil } from "lucide-react";
 import ScreenshotAnnotator from "./ScreenshotAnnotator";
+import type { BrowserMetadata } from "./BugWidget";
 
-export default function BugReportForm({ onClose, screenshot }: { onClose: () => void; screenshot?: string | null }) {
+export default function BugReportForm({ onClose, screenshot, metadata }: { onClose: () => void; screenshot?: string | null; metadata?: BrowserMetadata | null }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [severity, setSeverity] = useState<string>("medium");
@@ -34,6 +35,10 @@ export default function BugReportForm({ onClose, screenshot }: { onClose: () => 
       severity: severity as "low" | "medium" | "high" | "critical",
       email: email || undefined,
       screenshot: finalScreenshot || undefined,
+      url: metadata?.url,
+      userAgent: metadata?.userAgent,
+      viewportSize: metadata?.viewportSize,
+      consoleErrors: metadata?.consoleErrors,
     });
     setSubmitted(true);
     setTimeout(onClose, 1800);
