@@ -28,6 +28,7 @@ export default function BugReportForm({ onClose, screenshot }: { onClose: () => 
       description,
       severity: severity as "low" | "medium" | "high" | "critical",
       email: email || undefined,
+      screenshot: screenshot || undefined,
     });
     setSubmitted(true);
     setTimeout(onClose, 1800);
