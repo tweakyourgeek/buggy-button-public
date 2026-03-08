@@ -4,6 +4,7 @@ export interface BugReport {
   description: string;
   severity: "low" | "medium" | "high" | "critical";
   email?: string;
+  screenshot?: string; // base64 data URL
   createdAt: Date;
 }
 

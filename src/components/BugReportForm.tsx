@@ -13,7 +13,7 @@ import {
 import { bugStore } from "@/lib/bugStore";
 import { CheckCircle } from "lucide-react";
 
-export default function BugReportForm({ onClose }: { onClose: () => void }) {
+export default function BugReportForm({ onClose, screenshot }: { onClose: () => void; screenshot?: string | null }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [severity, setSeverity] = useState<string>("medium");

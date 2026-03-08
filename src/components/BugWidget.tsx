@@ -1,33 +1,59 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Bug, X } from "lucide-react";
+import html2canvas from "html2canvas";
 import BugReportForm from "./BugReportForm";
 
 export default function BugWidget() {
   const [open, setOpen] = useState(false);
+  const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [capturing, setCapturing] = useState(false);
+
+  const handleOpen = useCallback(async () => {
+    setCapturing(true);
+    try {
+      const target =
+        window.parent?.document?.body ?? document.body;
+      const canvas = await html2canvas(target, {
+        useCORS: true,
+        logging: false,
+        scale: window.devicePixelRatio * 0.5, // keep it small
+      });
+      setScreenshot(canvas.toDataURL("image/png"));
+    } catch {
+      setScreenshot(null);
+    }
+    setCapturing(false);
+    setOpen(true);
+  }, []);
+
+  const handleClose = () => {
+    setOpen(false);
+    setScreenshot(null);
+  };
 
   return (
     <>
-      {/* Floating Action Button */}
       {!open && (
         <button
-          onClick={() => setOpen(true)}
-          className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-bug-fab text-bug-fab-foreground shadow-lg transition-transform hover:scale-110 active:scale-95"
+          onClick={handleOpen}
+          disabled={capturing}
+          className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-bug-fab text-bug-fab-foreground shadow-lg transition-transform hover:scale-110 active:scale-95 disabled:opacity-70"
           aria-label="Report a bug"
         >
-          <Bug size={26} />
+          {capturing ? (
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-bug-fab-foreground border-t-transparent" />
+          ) : (
+            <Bug size={26} />
+          )}
         </button>
       )}
 
-      {/* Modal overlay */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-end p-4 sm:items-center sm:justify-center">
-          {/* Backdrop */}
           <div
             className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
+            onClick={handleClose}
           />
-
-          {/* Panel */}
           <div className="relative w-full max-w-md rounded-2xl bg-background p-6 shadow-2xl animate-in slide-in-from-bottom-4 fade-in duration-200">
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -35,7 +61,7 @@ export default function BugWidget() {
                 <h2 className="text-lg font-bold text-foreground">Report a Bug</h2>
               </div>
               <button
-                onClick={() => setOpen(false)}
+                onClick={handleClose}
                 className="rounded-full p-1 text-muted-foreground hover:bg-muted"
                 aria-label="Close"
               >
@@ -43,7 +69,7 @@ export default function BugWidget() {
               </button>
             </div>
 
-            <BugReportForm onClose={() => setOpen(false)} />
+            <BugReportForm onClose={handleClose} screenshot={screenshot} />
           </div>
         </div>
       )}
