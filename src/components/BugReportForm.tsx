@@ -13,7 +13,7 @@ import {
 import { bugStore } from "@/lib/bugStore";
 import { CheckCircle } from "lucide-react";
 
-export default function BugReportForm({ onClose }: { onClose: () => void }) {
+export default function BugReportForm({ onClose, screenshot }: { onClose: () => void; screenshot?: string | null }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [severity, setSeverity] = useState<string>("medium");
@@ -28,6 +28,7 @@ export default function BugReportForm({ onClose }: { onClose: () => void }) {
       description,
       severity: severity as "low" | "medium" | "high" | "critical",
       email: email || undefined,
+      screenshot: screenshot || undefined,
     });
     setSubmitted(true);
     setTimeout(onClose, 1800);
@@ -93,6 +94,17 @@ export default function BugReportForm({ onClose }: { onClose: () => void }) {
           onChange={(e) => setEmail(e.target.value)}
         />
       </div>
+
+      {screenshot && (
+        <div className="space-y-1.5">
+          <Label>Screenshot</Label>
+          <img
+            src={screenshot}
+            alt="Captured screenshot"
+            className="w-full rounded-lg border border-border"
+          />
+        </div>
+      )}
 
       <div className="flex gap-2 pt-2">
         <Button type="button" variant="outline" className="flex-1" onClick={onClose}>
