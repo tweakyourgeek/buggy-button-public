@@ -37,6 +37,7 @@ export default function ScreenshotAnnotator({ screenshot, onSave }: Props) {
 
   const [tool, setTool] = useState<Tool>("pen");
   const [color, setColor] = useState<Color>(COLORS[0]);
+  const [lineWidth, setLineWidth] = useState(3);
   const [actions, setActions] = useState<DrawAction[]>([]);
   const [currentAction, setCurrentAction] = useState<DrawAction | null>(null);
   const [drawing, setDrawing] = useState(false);
