@@ -1,19 +1,47 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Bug, X } from "lucide-react";
 import html2canvas from "html2canvas";
 import BugReportForm from "./BugReportForm";
+
+export interface BrowserMetadata {
+  url: string;
+  userAgent: string;
+  viewportSize: string;
+  consoleErrors: string[];
+}
 
 export default function BugWidget() {
   const [open, setOpen] = useState(false);
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
+  const [metadata, setMetadata] = useState<BrowserMetadata | null>(null);
+  const consoleErrorsRef = useRef<string[]>([]);
+
+  // Intercept console.error to capture errors
+  useEffect(() => {
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      consoleErrorsRef.current.push(args.map(String).join(" "));
+      // Keep only last 20
+      if (consoleErrorsRef.current.length > 20) consoleErrorsRef.current.shift();
+      originalError.apply(console, args);
+    };
+    return () => { console.error = originalError; };
+  }, []);
+
+  const captureMetadata = useCallback((): BrowserMetadata => ({
+    url: window.location.href,
+    userAgent: navigator.userAgent,
+    viewportSize: `${window.innerWidth}x${window.innerHeight}`,
+    consoleErrors: [...consoleErrorsRef.current],
+  }), []);
 
   const handleOpen = useCallback(async () => {
     setCapturing(true);
+    const meta = captureMetadata();
     try {
       let target = document.body;
       try {
-        // Try parent document for iframe embedding
         if (window.parent && window.parent.document) {
           target = window.parent.document.body;
         }
@@ -31,9 +59,10 @@ export default function BugWidget() {
       console.error("Screenshot capture failed:", err);
       setScreenshot(null);
     }
+    setMetadata(meta);
     setCapturing(false);
     setOpen(true);
-  }, []);
+  }, [captureMetadata]);
 
   const handleClose = () => {
     setOpen(false);
