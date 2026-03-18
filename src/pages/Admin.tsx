@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bug, Search, X, ArrowLeft, ExternalLink, Monitor, Mail, Clock, AlertTriangle } from "lucide-react";
+import { Bug, Search, X, ArrowLeft, ExternalLink, Monitor, Mail, Clock, AlertTriangle, Download, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 
@@ -44,12 +44,24 @@ const statusLabel: Record<BugStatus, string> = {
   closed: "Closed",
 };
 
+function downloadFile(content: string, filename: string, type: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function Admin() {
   const [bugs, setBugs] = useState<BugReport[]>(bugStore.getAll());
   const [search, setSearch] = useState("");
   const [filterSeverity, setFilterSeverity] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedBugId, setSelectedBugId] = useState<string | null>(null);
+
+  const refresh = () => setBugs(bugStore.getAll());
 
   const filtered = useMemo(() => {
     return bugs.filter((b) => {
@@ -67,7 +79,13 @@ export default function Admin() {
 
   const handleStatusChange = (id: string, status: BugStatus) => {
     bugStore.updateStatus(id, status);
-    setBugs(bugStore.getAll());
+    refresh();
+  };
+
+  const handleDelete = (id: string) => {
+    bugStore.deleteReport(id);
+    setSelectedBugId(null);
+    refresh();
   };
 
   const counts = useMemo(() => {
@@ -77,7 +95,7 @@ export default function Admin() {
   }, [bugs]);
 
   if (selectedBug) {
-    return <BugDetail bug={selectedBug} onBack={() => setSelectedBugId(null)} onStatusChange={handleStatusChange} />;
+    return <BugDetail bug={selectedBug} onBack={() => setSelectedBugId(null)} onStatusChange={handleStatusChange} onDelete={handleDelete} />;
   }
 
   return (
@@ -94,11 +112,29 @@ export default function Admin() {
               <p className="text-xs text-muted-foreground">{counts.total} total reports</p>
             </div>
           </div>
-          <Link to="/">
-            <Button variant="outline" size="sm">
-              <ArrowLeft size={14} className="mr-1" /> Back to App
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadFile(bugStore.exportJSON(), `bugs-${format(new Date(), "yyyy-MM-dd")}.json`, "application/json")}
+              disabled={bugs.length === 0}
+            >
+              <Download size={14} className="mr-1" /> JSON
             </Button>
-          </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadFile(bugStore.exportCSV(), `bugs-${format(new Date(), "yyyy-MM-dd")}.csv`, "text/csv")}
+              disabled={bugs.length === 0}
+            >
+              <Download size={14} className="mr-1" /> CSV
+            </Button>
+            <Link to="/">
+              <Button variant="outline" size="sm">
+                <ArrowLeft size={14} className="mr-1" /> Back to App
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -124,7 +160,7 @@ export default function Admin() {
           <div className="relative flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search bugs…"
+              placeholder="Search bugs..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -176,7 +212,7 @@ export default function Admin() {
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
-                    No bugs match your filters.
+                    {bugs.length === 0 ? "No bug reports yet. Reports submitted via the widget will appear here." : "No bugs match your filters."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -218,10 +254,12 @@ function BugDetail({
   bug,
   onBack,
   onStatusChange,
+  onDelete,
 }: {
   bug: BugReport;
   onBack: () => void;
   onStatusChange: (id: string, status: BugStatus) => void;
+  onDelete: (id: string) => void;
 }) {
   return (
     <div className="min-h-screen bg-background">
@@ -232,8 +270,11 @@ function BugDetail({
           </Button>
           <div className="flex-1">
             <h1 className="text-lg font-bold text-foreground">{bug.title}</h1>
-            <p className="text-xs text-muted-foreground">#{bug.id}</p>
+            <p className="text-xs text-muted-foreground">#{bug.id.slice(0, 8)}</p>
           </div>
+          <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => onDelete(bug.id)}>
+            <Trash2 size={14} className="mr-1" /> Delete
+          </Button>
         </div>
       </header>
 

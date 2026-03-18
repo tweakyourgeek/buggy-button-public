@@ -15,80 +15,86 @@ export interface BugReport {
   userAgent?: string;
   viewportSize?: string;
   consoleErrors?: string[];
+  projectName?: string;
 }
 
-// Mock data for the admin dashboard
-const mockBugs: BugReport[] = [
-  {
-    id: "bug-001",
-    title: "Login button unresponsive on mobile",
-    description: "When tapping the login button on iPhone Safari, nothing happens. The button appears to receive the tap (visual feedback) but the form doesn't submit. Tested on iPhone 14 Pro, iOS 17.2.",
-    severity: "critical",
-    status: "open",
-    email: "sarah@example.com",
-    createdAt: new Date("2026-03-07T14:23:00"),
-    updatedAt: new Date("2026-03-07T14:23:00"),
-    url: "https://app.example.com/login",
-    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15",
-  },
-  {
-    id: "bug-002",
-    title: "Dashboard chart renders blank on Firefox",
-    description: "The revenue chart on the dashboard page shows a blank white area in Firefox 122. Works fine in Chrome and Edge. No console errors visible.",
-    severity: "high",
-    status: "in_progress",
-    email: "mike@example.com",
-    createdAt: new Date("2026-03-06T09:15:00"),
-    updatedAt: new Date("2026-03-07T11:00:00"),
-    url: "https://app.example.com/dashboard",
-    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0",
-  },
-  {
-    id: "bug-003",
-    title: "Typo in onboarding welcome message",
-    description: 'The welcome message says "Welcone to our platform" instead of "Welcome to our platform".',
-    severity: "low",
-    status: "resolved",
-    createdAt: new Date("2026-03-05T16:42:00"),
-    updatedAt: new Date("2026-03-06T08:30:00"),
-    url: "https://app.example.com/onboarding",
-  },
-  {
-    id: "bug-004",
-    title: "File upload fails for files over 5MB",
-    description: "Attempting to upload a PDF larger than 5MB results in a generic 'Upload failed' error. The API returns a 413 but the UI doesn't show a helpful message about file size limits.",
-    severity: "medium",
-    status: "open",
-    email: "jessica@example.com",
-    createdAt: new Date("2026-03-07T10:05:00"),
-    updatedAt: new Date("2026-03-07T10:05:00"),
-    url: "https://app.example.com/settings/profile",
-    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-  },
-  {
-    id: "bug-005",
-    title: "Dark mode toggle doesn't persist",
-    description: "When I enable dark mode and refresh the page, it reverts to light mode. Expected the preference to be saved.",
-    severity: "medium",
-    status: "closed",
-    email: "alex@example.com",
-    createdAt: new Date("2026-03-03T20:11:00"),
-    updatedAt: new Date("2026-03-05T14:00:00"),
-  },
-  {
-    id: "bug-006",
-    title: "Notification badge count incorrect",
-    description: "The notification bell shows 3 unread but I have 7 unread notifications when I open the panel. The count seems to stop updating after the initial load.",
-    severity: "high",
-    status: "open",
-    email: "tom@example.com",
-    createdAt: new Date("2026-03-08T08:30:00"),
-    updatedAt: new Date("2026-03-08T08:30:00"),
-    url: "https://app.example.com/notifications",
-  },
-];
+export interface WidgetConfig {
+  projectName: string;
+  showBetaBadge: boolean;
+  webhookUrl?: string;
+  position: "bottom-right" | "bottom-left";
+  collectEmail: boolean;
+}
 
-const reports: BugReport[] = [...mockBugs];
+const CONFIG_KEY = "bugwidget_config";
+const REPORTS_KEY = "bugwidget_reports";
+
+const defaultConfig: WidgetConfig = {
+  projectName: "My App",
+  showBetaBadge: true,
+  position: "bottom-right",
+  collectEmail: true,
+};
+
+function loadReports(): BugReport[] {
+  try {
+    const raw = localStorage.getItem(REPORTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return parsed.map((r: Record<string, unknown>) => ({
+      ...r,
+      createdAt: new Date(r.createdAt as string),
+      updatedAt: new Date(r.updatedAt as string),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function saveReports(reports: BugReport[]) {
+  try {
+    localStorage.setItem(REPORTS_KEY, JSON.stringify(reports));
+  } catch {
+    // Storage full or unavailable — silent fail
+  }
+}
+
+function loadConfig(): WidgetConfig {
+  try {
+    const raw = localStorage.getItem(CONFIG_KEY);
+    if (!raw) return { ...defaultConfig };
+    return { ...defaultConfig, ...JSON.parse(raw) };
+  } catch {
+    return { ...defaultConfig };
+  }
+}
+
+function saveConfig(config: WidgetConfig) {
+  try {
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+  } catch {
+    // silent fail
+  }
+}
+
+let reports: BugReport[] = loadReports();
+let config: WidgetConfig = loadConfig();
+
+async function callWebhook(report: BugReport) {
+  if (!config.webhookUrl) return;
+  try {
+    await fetch(config.webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...report,
+        screenshot: undefined, // Don't send large screenshots over webhook
+      }),
+    });
+  } catch {
+    // Webhook delivery is best-effort
+  }
+}
 
 export const bugStore = {
   submit(data: Omit<BugReport, "id" | "createdAt" | "updatedAt" | "status">): BugReport {
@@ -97,10 +103,13 @@ export const bugStore = {
       ...data,
       id: crypto.randomUUID(),
       status: "open",
+      projectName: config.projectName,
       createdAt: now,
       updatedAt: now,
     };
     reports.unshift(report);
+    saveReports(reports);
+    callWebhook(report);
     return report;
   },
 
@@ -117,7 +126,43 @@ export const bugStore = {
     if (report) {
       report.status = status;
       report.updatedAt = new Date();
+      saveReports(reports);
     }
     return report;
+  },
+
+  deleteReport(id: string): boolean {
+    const idx = reports.findIndex((r) => r.id === id);
+    if (idx === -1) return false;
+    reports.splice(idx, 1);
+    saveReports(reports);
+    return true;
+  },
+
+  clearAll() {
+    reports = [];
+    saveReports(reports);
+  },
+
+  getConfig(): WidgetConfig {
+    return { ...config };
+  },
+
+  updateConfig(partial: Partial<WidgetConfig>) {
+    config = { ...config, ...partial };
+    saveConfig(config);
+  },
+
+  exportJSON(): string {
+    return JSON.stringify(reports, null, 2);
+  },
+
+  exportCSV(): string {
+    const headers = ["id", "title", "description", "severity", "status", "email", "url", "userAgent", "viewportSize", "projectName", "createdAt", "updatedAt"];
+    const escape = (v: string) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = reports.map((r) =>
+      headers.map((h) => escape(String((r as Record<string, unknown>)[h] ?? ""))).join(",")
+    );
+    return [headers.join(","), ...rows].join("\n");
   },
 };
