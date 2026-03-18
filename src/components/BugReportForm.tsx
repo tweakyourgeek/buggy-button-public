@@ -15,7 +15,7 @@ import { CheckCircle, Pencil } from "lucide-react";
 import ScreenshotAnnotator from "./ScreenshotAnnotator";
 import type { BrowserMetadata } from "./BugWidget";
 
-export default function BugReportForm({ onClose, screenshot, metadata }: { onClose: () => void; screenshot?: string | null; metadata?: BrowserMetadata | null }) {
+export default function BugReportForm({ onClose, screenshot, metadata, collectEmail = true }: { onClose: () => void; screenshot?: string | null; metadata?: BrowserMetadata | null; collectEmail?: boolean }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [severity, setSeverity] = useState<string>("medium");
@@ -94,16 +94,18 @@ export default function BugReportForm({ onClose, screenshot, metadata }: { onClo
         </Select>
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="bug-email">Email (optional)</Label>
-        <Input
-          id="bug-email"
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
+      {collectEmail && (
+        <div className="space-y-1.5">
+          <Label htmlFor="bug-email">Email (optional)</Label>
+          <Input
+            id="bug-email"
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+      )}
 
       {screenshot && (
         <div className="space-y-1.5">

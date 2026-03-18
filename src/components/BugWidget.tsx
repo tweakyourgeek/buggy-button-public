@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Bug, X } from "lucide-react";
 import html2canvas from "html2canvas";
 import BugReportForm from "./BugReportForm";
+import { bugStore } from "@/lib/bugStore";
 
 export interface BrowserMetadata {
   url: string;
@@ -16,6 +17,15 @@ export default function BugWidget() {
   const [capturing, setCapturing] = useState(false);
   const [metadata, setMetadata] = useState<BrowserMetadata | null>(null);
   const consoleErrorsRef = useRef<string[]>([]);
+  const config = bugStore.getConfig();
+
+  const positionClasses = config.position === "bottom-left"
+    ? "bottom-5 left-5"
+    : "bottom-5 right-5";
+
+  const modalAlign = config.position === "bottom-left"
+    ? "items-end justify-start"
+    : "items-end justify-end";
 
   // Intercept console.error to capture errors
   useEffect(() => {
@@ -75,7 +85,7 @@ export default function BugWidget() {
         <button
           onClick={handleOpen}
           disabled={capturing}
-          className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-bug-fab text-bug-fab-foreground shadow-lg transition-transform hover:scale-110 active:scale-95 disabled:opacity-70"
+          className={`fixed ${positionClasses} z-50 flex h-14 w-14 items-center justify-center rounded-full bg-bug-fab text-bug-fab-foreground shadow-lg transition-transform hover:scale-110 active:scale-95 disabled:opacity-70`}
           aria-label="Report a bug"
         >
           {capturing ? (
@@ -83,11 +93,16 @@ export default function BugWidget() {
           ) : (
             <Bug size={26} />
           )}
+          {config.showBetaBadge && (
+            <span className="absolute -top-1 -right-1 rounded-full bg-bug-accent px-1.5 py-0.5 text-[10px] font-bold leading-none text-bug-accent-foreground shadow">
+              BETA
+            </span>
+          )}
         </button>
       )}
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-end p-4 sm:items-center sm:justify-center">
+        <div className={`fixed inset-0 z-50 flex ${modalAlign} p-4 sm:items-center sm:justify-center`}>
           <div
             className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
             onClick={handleClose}
@@ -96,7 +111,10 @@ export default function BugWidget() {
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Bug size={20} className="text-bug-accent" />
-                <h2 className="text-lg font-bold text-foreground">Report a Bug</h2>
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">Report a Bug</h2>
+                  <p className="text-xs text-muted-foreground">{config.projectName}</p>
+                </div>
               </div>
               <button
                 onClick={handleClose}
@@ -107,7 +125,7 @@ export default function BugWidget() {
               </button>
             </div>
 
-            <BugReportForm onClose={handleClose} screenshot={screenshot} metadata={metadata} />
+            <BugReportForm onClose={handleClose} screenshot={screenshot} metadata={metadata} collectEmail={config.collectEmail} />
           </div>
         </div>
       )}
