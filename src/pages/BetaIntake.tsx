@@ -16,6 +16,11 @@ const severityLabels = { low: "Low", medium: "Medium", high: "High", critical: "
 type Severity = keyof typeof severityLabels;
 
 export default function BetaIntake() {
+  const query = new URLSearchParams(window.location.search);
+  const product = query.get("product") || "Buggy Button Beta";
+  const siteUrl = query.get("site_url") || "";
+  const pageUrl = query.get("page_url") || "";
+  const flowId = query.get("flow_id") || "";
   const [session, setSession] = useState<BetaSession | null>(null);
   const [email, setEmail] = useState("");
   const [intakeCode, setIntakeCode] = useState("");
@@ -29,7 +34,7 @@ export default function BetaIntake() {
     event.preventDefault();
     setError("");
     try {
-      setSession(await betaIntake.openSession(email, intakeCode, "Geek Welcome Leads"));
+      setSession(await betaIntake.openSession(email, intakeCode, product));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Enter your email address and intake code.");
     }
@@ -63,7 +68,7 @@ export default function BetaIntake() {
         description: form.description.trim(),
         severity: form.severity,
         screenshot: capture || undefined,
-        pageUrl: document.referrer || window.location.href,
+        pageUrl: pageUrl || document.referrer || window.location.href,
         userAgent: navigator.userAgent,
         viewportSize: `${window.innerWidth}x${window.innerHeight}`,
       });
@@ -107,7 +112,7 @@ export default function BetaIntake() {
     <main className="min-h-screen bg-background px-5 py-8 text-foreground sm:px-8">
       <div className="mx-auto max-w-3xl">
         <header className="mb-7 flex flex-wrap items-center justify-between gap-4">
-          <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-bug-accent">Geek Welcome Leads</p><h1 className="text-2xl font-bold">Beta feedback desk</h1><p className="text-sm text-muted-foreground">Signed in as {session.email}</p></div>
+          <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-bug-accent">{product}</p><h1 className="text-2xl font-bold">Beta feedback desk</h1><p className="text-sm text-muted-foreground">Signed in as {session.email}</p>{siteUrl && <p className="mt-1 text-xs text-muted-foreground">From {siteUrl}{flowId ? ` · Flow ${flowId}` : ""}</p>}</div>
           <Button variant="outline" size="sm" onClick={() => setSession(null)}><LogOut size={14} className="mr-2" />Use another code</Button>
         </header>
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
