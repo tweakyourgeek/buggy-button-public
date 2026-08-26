@@ -29,6 +29,12 @@ const LOCAL_KEY = "buggy_button_beta_sessions";
 const apiConfig: BetaApiConfig | null = import.meta.env.VITE_BUGGY_BETA_API_URL
   ? { url: import.meta.env.VITE_BUGGY_BETA_API_URL, publicKey: import.meta.env.VITE_BUGGY_BETA_PUBLIC_KEY }
   : null;
+const allowedCodes = new Set(
+  String(import.meta.env.VITE_BUGGY_BETA_CODES || "")
+    .split(",")
+    .map((code) => normalizeCode(code))
+    .filter(Boolean),
+);
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
@@ -70,6 +76,9 @@ export const betaIntake = {
     const normalizedEmail = normalizeEmail(email);
     const normalizedCode = normalizeCode(intakeCode);
     if (!normalizedEmail || !normalizedCode) throw new Error("Enter your email address and intake code.");
+    if (!apiConfig && allowedCodes.size > 0 && !allowedCodes.has(normalizedCode)) {
+      throw new Error("That intake code is not active. Check the invitation and try again.");
+    }
     if (apiConfig) return request<BetaSession>("/sessions/open", {
       method: "POST",
       body: JSON.stringify({ email: normalizedEmail, intakeCode: normalizedCode, product }),
