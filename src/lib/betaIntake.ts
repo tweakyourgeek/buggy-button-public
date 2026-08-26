@@ -59,7 +59,7 @@ function saveLocal(sessions: BetaSession[]) {
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!apiConfig) throw new Error("Hosted beta API is not configured.");
   const headers = new Headers(init.headers);
-  headers.set("Content-Type", "application/json");
+  if (!(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
   if (apiConfig.publicKey) headers.set("X-Buggy-Beta-Key", apiConfig.publicKey);
   const response = await fetch(`${apiConfig.url.replace(/\/$/, "")}${path}`, { ...init, headers });
   const body = await response.json().catch(() => ({}));
@@ -79,10 +79,26 @@ export const betaIntake = {
     if (!apiConfig && allowedCodes.size > 0 && !allowedCodes.has(normalizedCode)) {
       throw new Error("That intake code is not active. Check the invitation and try again.");
     }
-    if (apiConfig) return request<BetaSession>("/sessions/open", {
-      method: "POST",
-      body: JSON.stringify({ email: normalizedEmail, intakeCode: normalizedCode, product }),
-    });
+    if (apiConfig) {
+      const remote = await request<{ id: string; email: string; intakeCode: string; product: string; createdAt: string; updatedAt: string; reports?: Array<Record<string, unknown>> }>("/sessions/open", {
+        method: "POST",
+        body: JSON.stringify({ email: normalizedEmail, intakeCode: normalizedCode, product }),
+      });
+      return {
+        ...remote,
+        reports: (remote.reports || []).map((report) => ({
+          id: String(report.id || ""),
+          title: String(report.title || ""),
+          description: String(report.description || ""),
+          severity: (String(report.severity || "medium") as BetaReport["severity"]),
+          screenshot: report.screenshot_path ? String(report.screenshot_path) : undefined,
+          pageUrl: report.url ? String(report.url) : undefined,
+          userAgent: report.user_agent ? String(report.user_agent) : undefined,
+          viewportSize: report.viewport_size ? String(report.viewport_size) : undefined,
+          createdAt: String(report.created_at || ""),
+        })),
+      };
+    }
 
     const existing = loadLocal().find((session) => session.email === normalizedEmail && session.intakeCode === normalizedCode);
     if (existing) return existing;
@@ -103,10 +119,18 @@ export const betaIntake = {
   },
 
   async saveReport(sessionId: string, report: Omit<BetaReport, "id" | "createdAt">): Promise<BetaReport> {
-    if (apiConfig) return request<BetaReport>(`/sessions/${encodeURIComponent(sessionId)}/reports`, {
-      method: "POST",
-      body: JSON.stringify(report),
-    });
+    if (apiConfig) {
+      const data = new FormData();
+      data.append("title", report.title);
+      data.append("description", report.description);
+      data.append("severity", report.severity);
+      data.append("consent", "1");
+      if (report.screenshot) data.append("screenshot", report.screenshot);
+      if (report.pageUrl) data.append("pageUrl", report.pageUrl);
+      if (report.userAgent) data.append("userAgent", report.userAgent);
+      if (report.viewportSize) data.append("viewportSize", report.viewportSize);
+      return request<BetaReport>(`/sessions/${encodeURIComponent(sessionId)}/reports`, { method: "POST", body: data });
+    }
 
     const sessions = loadLocal();
     const session = sessions.find((candidate) => candidate.id === sessionId);
