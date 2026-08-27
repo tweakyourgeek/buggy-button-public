@@ -14,6 +14,7 @@ export interface BetaReport {
   description: string;
   severity: "low" | "medium" | "high" | "critical";
   screenshot?: string;
+  video?: string;
   pageUrl?: string;
   userAgent?: string;
   viewportSize?: string;
@@ -92,6 +93,7 @@ export const betaIntake = {
           description: String(report.description || ""),
           severity: (String(report.severity || "medium") as BetaReport["severity"]),
           screenshot: report.screenshot_path ? String(report.screenshot_path) : undefined,
+          video: report.video_path ? String(report.video_path) : undefined,
           pageUrl: report.url ? String(report.url) : undefined,
           userAgent: report.user_agent ? String(report.user_agent) : undefined,
           viewportSize: report.viewport_size ? String(report.viewport_size) : undefined,
@@ -126,6 +128,7 @@ export const betaIntake = {
       data.append("severity", report.severity);
       data.append("consent", "1");
       if (report.screenshot) data.append("screenshot", report.screenshot);
+      if (report.video) data.append("video", report.video);
       if (report.pageUrl) data.append("pageUrl", report.pageUrl);
       if (report.userAgent) data.append("userAgent", report.userAgent);
       if (report.viewportSize) data.append("viewportSize", report.viewportSize);

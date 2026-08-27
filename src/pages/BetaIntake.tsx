@@ -1,7 +1,7 @@
 /* Design note: preserve Buggy Button’s warm brass, aubergine, and ivory visual system; keep the beta intake calm, evidence-first, and readable on a phone. */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import html2canvas from "html2canvas";
-import { ArrowRight, Bug, Camera, CheckCircle, LogOut, ShieldCheck } from "lucide-react";
+import { ArrowRight, Bug, Camera, CheckCircle, LogOut, ShieldCheck, Square, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,7 +27,11 @@ export default function BetaIntake() {
   const [error, setError] = useState("");
   const [reportSaved, setReportSaved] = useState(false);
   const [capture, setCapture] = useState<string | null>(null);
+  const [videoCapture, setVideoCapture] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
   const [form, setForm] = useState({ title: "", description: "", severity: "medium" as Severity });
 
   async function openSession(event: React.FormEvent) {
@@ -58,6 +62,50 @@ export default function BetaIntake() {
     }
   }
 
+  async function startScreenRecording() {
+    if (!navigator.mediaDevices?.getDisplayMedia || typeof MediaRecorder === "undefined") {
+      setError("Screen recording is not available in this browser. You can still attach a screenshot.");
+      return;
+    }
+    setError("");
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+      const chunks: Blob[] = [];
+      recorderRef.current = recorder;
+      recordingStreamRef.current = stream;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "video/webm" });
+        recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+        recordingStreamRef.current = null;
+        recorderRef.current = null;
+        setRecording(false);
+        if (blob.size > 10 * 1024 * 1024) {
+          setVideoCapture(null);
+          setError("That recording is larger than 10 MB. Record a shorter clip or attach a screenshot instead.");
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => setVideoCapture(typeof reader.result === "string" ? reader.result : null);
+        reader.readAsDataURL(blob);
+      };
+      stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+        if (recorder.state !== "inactive") recorder.stop();
+      });
+      recorder.start();
+      setRecording(true);
+    } catch {
+      setError("Screen recording was not started. You can still attach a screenshot or send the written report.");
+    }
+  }
+
+  function stopScreenRecording() {
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+  }
+
   async function submitReport(event: React.FormEvent) {
     event.preventDefault();
     if (!session || !form.title.trim() || !form.description.trim()) return;
@@ -68,6 +116,7 @@ export default function BetaIntake() {
         description: form.description.trim(),
         severity: form.severity,
         screenshot: capture || undefined,
+        video: videoCapture || undefined,
         pageUrl: pageUrl || document.referrer || window.location.href,
         userAgent: navigator.userAgent,
         viewportSize: `${window.innerWidth}x${window.innerHeight}`,
@@ -76,6 +125,7 @@ export default function BetaIntake() {
       setSession(refreshed);
       setForm({ title: "", description: "", severity: "medium" });
       setCapture(null);
+      setVideoCapture(null);
       setReportSaved(true);
       window.setTimeout(() => setReportSaved(false), 2600);
     } catch (cause) {
@@ -120,7 +170,7 @@ export default function BetaIntake() {
             <div className="space-y-2"><Label htmlFor="report-title">Short summary</Label><Input id="report-title" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="The flow stops after I choose a service" required /></div>
             <div className="space-y-2"><Label htmlFor="report-description">What happened?</Label><Textarea id="report-description" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Include the steps, what you expected, and what you saw." rows={6} required /></div>
             <div className="space-y-2"><Label>Priority</Label><Select value={form.severity} onValueChange={(value) => setForm({ ...form, severity: value as Severity })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(severityLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>
-            <div className="rounded-xl border border-dashed border-bug-accent/50 bg-bug-accent/5 p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-medium">Evidence</p><p className="text-xs text-muted-foreground">Capture the current page when it helps explain the report.</p></div><Button type="button" variant="outline" size="sm" onClick={captureScreenshot} disabled={capturing}>{capturing ? "Capturing…" : <><Camera size={14} className="mr-2" />Capture screenshot</>}</Button></div>{capture && <img src={capture} alt="Screenshot ready to attach" className="mt-3 max-h-52 w-full rounded-lg border object-cover" />}</div>
+            <div className="rounded-xl border border-dashed border-bug-accent/50 bg-bug-accent/5 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-medium">Evidence</p><p className="text-xs text-muted-foreground">Capture a screenshot or a short screen recording when it helps explain the report.</p></div><div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="outline" size="sm" onClick={captureScreenshot} disabled={capturing || recording}>{capturing ? "Capturing…" : <><Camera size={14} className="mr-2" />Capture screenshot</>}</Button><Button type="button" variant="outline" size="sm" onClick={recording ? stopScreenRecording : startScreenRecording}>{recording ? <><Square size={14} className="mr-2" />Stop recording</> : <><Video size={14} className="mr-2" />Record screen</>}</Button></div></div>{capture && <img src={capture} alt="Screenshot ready to attach" className="mt-3 max-h-52 w-full rounded-lg border object-cover" />}{videoCapture && <video src={videoCapture} controls className="mt-3 max-h-52 w-full rounded-lg border bg-black" aria-label="Screen recording ready to attach" />}</div>
             {error && <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full bg-bug-accent text-bug-accent-foreground hover:bg-bug-accent/90">Send report</Button>
             {reportSaved && <p role="status" className="flex items-center justify-center gap-2 text-sm text-emerald-700"><CheckCircle size={16} />Saved to the beta desk.</p>}
