@@ -1,6 +1,7 @@
 import type { BugReport, BugSeverity, BugStatus } from "@/lib/bugStore";
 
 const apiUrl = import.meta.env.VITE_BUGGY_BETA_API_URL as string | undefined;
+const publicKey = import.meta.env.VITE_BUGGY_BETA_PUBLIC_KEY as string | undefined;
 const ADMIN_KEY = "buggy_beta_admin_key";
 
 function getKey() {
@@ -37,6 +38,7 @@ async function request<T>(path: string, init: RequestInit = {}, key = getKey()):
   if (!key) throw new Error("Enter the shared inbox admin key to continue.");
   const headers = new Headers(init.headers);
   headers.set("X-Buggy-Admin-Key", key);
+  if (publicKey) headers.set("X-Buggy-Beta-Key", publicKey);
   if (init.body && !(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
   const response = await fetch(`${apiUrl.replace(/\/$/, "")}${path}`, { ...init, headers });
   const body = await response.json().catch(() => ({}));
