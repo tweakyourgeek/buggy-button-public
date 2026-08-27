@@ -4,6 +4,7 @@ import { remoteAdmin } from "@/lib/remoteAdmin";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -119,6 +120,12 @@ export default function Admin() {
     await refresh();
   };
 
+  const handleTriageChange = async (id: string, update: { internalNotes?: string; assignedTo?: string }) => {
+    if (!sharedMode) return;
+    await remoteAdmin.update(id, update);
+    await refresh();
+  };
+
   const connectShared = async () => {
     remoteAdmin.setKey(adminKey);
     setSharedMode(true);
@@ -139,7 +146,7 @@ export default function Admin() {
   }, [bugs]);
 
   if (selectedBug) {
-    return <BugDetail bug={selectedBug} onBack={() => setSelectedBugId(null)} onStatusChange={handleStatusChange} onDelete={handleDelete} />;
+    return <BugDetail bug={selectedBug} onBack={() => setSelectedBugId(null)} onStatusChange={handleStatusChange} onDelete={handleDelete} onTriageChange={handleTriageChange} remote={sharedMode} />;
   }
 
   return (
@@ -303,12 +310,31 @@ function BugDetail({
   onBack,
   onStatusChange,
   onDelete,
+  onTriageChange,
+  remote,
 }: {
   bug: BugReport;
   onBack: () => void;
   onStatusChange: (id: string, status: BugStatus) => void;
   onDelete: (id: string) => void;
+  onTriageChange: (id: string, update: { internalNotes?: string; assignedTo?: string }) => Promise<void>;
+  remote: boolean;
 }) {
+  const [internalNotes, setInternalNotes] = useState(bug.internalNotes || "");
+  const [assignedTo, setAssignedTo] = useState(bug.assignedTo || "");
+  const [savingTriage, setSavingTriage] = useState(false);
+  const [triageSaved, setTriageSaved] = useState(false);
+
+  async function saveTriage() {
+    setSavingTriage(true);
+    try {
+      await onTriageChange(bug.id, { internalNotes, assignedTo });
+      setTriageSaved(true);
+      window.setTimeout(() => setTriageSaved(false), 2200);
+    } finally {
+      setSavingTriage(false);
+    }
+  }
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
@@ -424,6 +450,15 @@ function BugDetail({
             </CardContent>
           </Card>
         </div>
+
+        {remote && <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Triage notes</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2"><label htmlFor="bug-assigned-to" className="text-sm font-medium">Assigned to</label><Input id="bug-assigned-to" value={assignedTo} onChange={(event) => setAssignedTo(event.target.value)} placeholder="Name or team" /></div>
+            <div className="space-y-2"><label htmlFor="bug-internal-notes" className="text-sm font-medium">Internal notes</label><Textarea id="bug-internal-notes" value={internalNotes} onChange={(event) => setInternalNotes(event.target.value)} placeholder="Record the next investigation step or follow-up." rows={4} /></div>
+            <div className="flex items-center gap-3"><Button type="button" onClick={saveTriage} disabled={savingTriage}>{savingTriage ? "Saving…" : "Save triage"}</Button>{triageSaved && <span role="status" className="text-sm text-emerald-700">Triage saved.</span>}</div>
+          </CardContent>
+        </Card>}
 
         {/* Screenshot */}
         {bug.screenshot && (
