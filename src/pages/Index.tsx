@@ -46,11 +46,17 @@ export default function Index() {
               <p className="text-xs text-muted-foreground">Configure for your beta app</p>
             </div>
           </div>
-          <Link to="/admin">
-            <Button variant="outline" size="sm">
-              View Reports
-            </Button>
-          </Link>
+                        <div className="flex items-center gap-2">
+                <Link to="/beta">
+                  <Button size="sm" className="bg-bug-accent text-bug-accent-foreground hover:bg-bug-accent/90">Beta Desk</Button>
+                </Link>
+                <Link to="/admin">
+                  <Button variant="outline" size="sm">
+                    View Reports
+                  </Button>
+                </Link>
+              </div>
+
         </div>
       </header>
 
@@ -142,7 +148,7 @@ export default function Index() {
               <code>{embedSnippet}</code>
             </pre>
             <p className="text-xs text-muted-foreground">
-              Bug reports are stored in the browser's localStorage. Use the <Link to="/admin" className="text-primary underline">Admin Dashboard</Link> to view, manage, and export reports.
+              The hosted <Link to="/beta" className="text-primary underline">Beta Desk</Link> uses email plus an intake code so testers can return to saved reports. The local <Link to="/admin" className="text-primary underline">Admin Dashboard</Link> remains available for development and fallback review.
             </p>
           </CardContent>
         </Card>

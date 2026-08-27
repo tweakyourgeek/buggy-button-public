@@ -21,6 +21,7 @@ That's it. Open http://localhost:8080 to configure the widget and start collecti
 | `/` | Widget settings — configure project name, position, webhook, beta badge |
 | `/widget` | Standalone widget page — embed this via iframe in your app |
 | `/admin` | Admin dashboard — view, filter, manage, and export bug reports |
+| `/beta` | Hosted beta desk — enter email and intake code, submit evidence, and return to saved reports |
 
 ## Embedding in Your Beta App
 
@@ -82,16 +83,17 @@ Visit `/admin` to:
 - Update status or delete reports
 - Export all reports as **JSON** or **CSV**
 
+## Hosted Beta Desk
+
+The `/beta` route is the internal-beta intake for products such as Geek Welcome Leads. Testers enter the email address and intake code from their invitation, submit a written report with optional screenshot or video evidence, and return later with the same details to view saved reports. The route accepts `product`, `site_url`, `page_url`, and `flow_id` query parameters so an embedded WordPress Buggy Button can carry its originating context into the hosted desk.
+
+Set `VITE_BUGGY_BETA_API_URL` and `VITE_BUGGY_BETA_PUBLIC_KEY` when using the durable Supabase Edge Function. Set `VITE_BUGGY_BETA_CODES` for issued internal-beta codes in a static or local build. The Edge Function validates codes server-side and sends optional Resend notifications through its private environment variables. See `.env.example` and `modules/supabase/beta-intake/README.md` in the companion Buggy Button repository for the deployment contract.
+
 ## Data Storage
 
-All data lives in the browser's `localStorage`:
+The browser `localStorage` adapter remains available for local development when `VITE_BUGGY_BETA_API_URL` is blank. It is not the cross-browser beta source of record. With the hosted API configured, sessions and reports are stored in the shared Buggy Button database and evidence is stored in private object storage.
 
-| Key | Contents |
-|---|---|
-| `bugwidget_reports` | Array of bug report objects |
-| `bugwidget_config` | Widget configuration |
-
-There is no backend. To move data between browsers, use the JSON/CSV export on the admin page.
+The existing `/admin` page continues to support local widget reports. The hosted beta desk and its owner dashboard are the distributed-beta path.
 
 ## Available Scripts
 

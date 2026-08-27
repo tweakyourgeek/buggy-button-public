@@ -9,9 +9,14 @@ export interface BugReport {
   status: BugStatus;
   email?: string;
   screenshot?: string;
+  video?: string;
+  internalNotes?: string;
+  assignedTo?: string;
   createdAt: Date;
   updatedAt: Date;
   url?: string;
+  siteUrl?: string;
+  flowId?: string;
   userAgent?: string;
   viewportSize?: string;
   consoleErrors?: string[];

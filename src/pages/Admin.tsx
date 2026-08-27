@@ -1,8 +1,10 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { bugStore, BugReport, BugStatus, BugSeverity } from "@/lib/bugStore";
+import { remoteAdmin } from "@/lib/remoteAdmin";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -44,6 +46,12 @@ const statusLabel: Record<BugStatus, string> = {
   closed: "Closed",
 };
 
+function exportCSV(reports: BugReport[]) {
+  const headers = ["id", "title", "description", "severity", "status", "email", "url", "userAgent", "viewportSize", "projectName", "createdAt", "updatedAt"];
+  const escape = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  return [headers.join(","), ...reports.map((report) => headers.map((header) => escape((report as unknown as Record<string, unknown>)[header])).join(","))].join("\n");
+}
+
 function downloadFile(content: string, filename: string, type: string) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -60,8 +68,30 @@ export default function Admin() {
   const [filterSeverity, setFilterSeverity] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedBugId, setSelectedBugId] = useState<string | null>(null);
+  const [sharedMode, setSharedMode] = useState(Boolean(remoteAdmin.isConfigured() && remoteAdmin.getKey()));
+  const [adminKey, setAdminKey] = useState(remoteAdmin.getKey());
+  const [sharedError, setSharedError] = useState("");
+  const [loadingShared, setLoadingShared] = useState(false);
 
-  const refresh = () => setBugs(bugStore.getAll());
+  const refresh = async () => {
+    if (!sharedMode) {
+      setBugs(bugStore.getAll());
+      return;
+    }
+    setLoadingShared(true);
+    setSharedError("");
+    try {
+      setBugs(await remoteAdmin.list(filterStatus, search));
+    } catch (cause) {
+      setSharedError(cause instanceof Error ? cause.message : "The shared inbox could not be loaded.");
+    } finally {
+      setLoadingShared(false);
+    }
+  };
+
+  useEffect(() => {
+    if (sharedMode) void refresh();
+  }, [sharedMode]);
 
   const filtered = useMemo(() => {
     return bugs.filter((b) => {
@@ -77,15 +107,36 @@ export default function Admin() {
 
   const selectedBug = selectedBugId ? bugs.find((b) => b.id === selectedBugId) : null;
 
-  const handleStatusChange = (id: string, status: BugStatus) => {
-    bugStore.updateStatus(id, status);
-    refresh();
+  const handleStatusChange = async (id: string, status: BugStatus) => {
+    if (sharedMode) await remoteAdmin.update(id, { status });
+    else bugStore.updateStatus(id, status);
+    await refresh();
   };
 
-  const handleDelete = (id: string) => {
-    bugStore.deleteReport(id);
+  const handleDelete = async (id: string) => {
+    if (sharedMode) await remoteAdmin.remove(id);
+    else bugStore.deleteReport(id);
     setSelectedBugId(null);
-    refresh();
+    await refresh();
+  };
+
+  const handleTriageChange = async (id: string, update: { internalNotes?: string; assignedTo?: string }) => {
+    if (!sharedMode) return;
+    await remoteAdmin.update(id, update);
+    await refresh();
+  };
+
+  const connectShared = async () => {
+    remoteAdmin.setKey(adminKey);
+    setSharedMode(true);
+    setSharedError("");
+  };
+
+  const disconnectShared = () => {
+    remoteAdmin.clearKey();
+    setAdminKey("");
+    setSharedMode(false);
+    setBugs(bugStore.getAll());
   };
 
   const counts = useMemo(() => {
@@ -95,7 +146,7 @@ export default function Admin() {
   }, [bugs]);
 
   if (selectedBug) {
-    return <BugDetail bug={selectedBug} onBack={() => setSelectedBugId(null)} onStatusChange={handleStatusChange} onDelete={handleDelete} />;
+    return <BugDetail bug={selectedBug} onBack={() => setSelectedBugId(null)} onStatusChange={handleStatusChange} onDelete={handleDelete} onTriageChange={handleTriageChange} remote={sharedMode} />;
   }
 
   return (
@@ -112,11 +163,12 @@ export default function Admin() {
               <p className="text-xs text-muted-foreground">{counts.total} total reports</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {remoteAdmin.isConfigured() && <div className="flex items-center gap-2"><Input type="password" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} placeholder="Shared inbox key" className="h-9 w-40" aria-label="Shared inbox admin key" />{sharedMode ? <Button variant="outline" size="sm" onClick={disconnectShared}>Use local</Button> : <Button variant="outline" size="sm" onClick={connectShared} disabled={!adminKey.trim()}>Connect shared</Button>}</div>}
             <Button
               variant="outline"
               size="sm"
-              onClick={() => downloadFile(bugStore.exportJSON(), `bugs-${format(new Date(), "yyyy-MM-dd")}.json`, "application/json")}
+              onClick={() => downloadFile(JSON.stringify(bugs, null, 2), `bugs-${format(new Date(), "yyyy-MM-dd")}.json`, "application/json")}
               disabled={bugs.length === 0}
             >
               <Download size={14} className="mr-1" /> JSON
@@ -124,7 +176,7 @@ export default function Admin() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => downloadFile(bugStore.exportCSV(), `bugs-${format(new Date(), "yyyy-MM-dd")}.csv`, "text/csv")}
+              onClick={() => downloadFile(exportCSV(bugs), `bugs-${format(new Date(), "yyyy-MM-dd")}.csv`, "text/csv")}
               disabled={bugs.length === 0}
             >
               <Download size={14} className="mr-1" /> CSV
@@ -139,6 +191,9 @@ export default function Admin() {
       </header>
 
       <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+        {sharedError && <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{sharedError}</p>}
+        {sharedMode && <p className="text-xs text-muted-foreground">Shared beta inbox · {loadingShared ? "Refreshing reports…" : "Connected"}</p>}
+
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {(["open", "in_progress", "resolved", "closed"] as BugStatus[]).map((s) => (
@@ -255,12 +310,31 @@ function BugDetail({
   onBack,
   onStatusChange,
   onDelete,
+  onTriageChange,
+  remote,
 }: {
   bug: BugReport;
   onBack: () => void;
   onStatusChange: (id: string, status: BugStatus) => void;
   onDelete: (id: string) => void;
+  onTriageChange: (id: string, update: { internalNotes?: string; assignedTo?: string }) => Promise<void>;
+  remote: boolean;
 }) {
+  const [internalNotes, setInternalNotes] = useState(bug.internalNotes || "");
+  const [assignedTo, setAssignedTo] = useState(bug.assignedTo || "");
+  const [savingTriage, setSavingTriage] = useState(false);
+  const [triageSaved, setTriageSaved] = useState(false);
+
+  async function saveTriage() {
+    setSavingTriage(true);
+    try {
+      await onTriageChange(bug.id, { internalNotes, assignedTo });
+      setTriageSaved(true);
+      window.setTimeout(() => setTriageSaved(false), 2200);
+    } finally {
+      setSavingTriage(false);
+    }
+  }
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
@@ -334,10 +408,12 @@ function BugDetail({
 
           <Card>
             <CardContent className="p-4 space-y-3">
+              {bug.siteUrl && <div className="flex items-center gap-2 text-sm"><ExternalLink size={14} className="text-muted-foreground" /><span className="text-muted-foreground">Site:</span><span className="text-foreground truncate">{bug.siteUrl}</span></div>}
+              {bug.flowId && <div className="flex items-center gap-2 text-sm"><span className="text-muted-foreground">Flow:</span><span className="text-foreground">{bug.flowId}</span></div>}
               {bug.url && (
                 <div className="flex items-center gap-2 text-sm">
                   <ExternalLink size={14} className="text-muted-foreground" />
-                  <span className="text-muted-foreground">URL:</span>
+                  <span className="text-muted-foreground">Page:</span>
                   <span className="text-foreground truncate">{bug.url}</span>
                 </div>
               )}
@@ -355,6 +431,8 @@ function BugDetail({
                   <span className="text-foreground">{bug.viewportSize}</span>
                 </div>
               )}
+              {bug.assignedTo && <div className="text-sm"><span className="text-muted-foreground">Assigned:</span> <span className="text-foreground">{bug.assignedTo}</span></div>}
+              {bug.internalNotes && <div className="text-sm"><span className="text-muted-foreground">Internal note:</span> <span className="text-foreground whitespace-pre-wrap">{bug.internalNotes}</span></div>}
               {bug.consoleErrors && bug.consoleErrors.length > 0 && (
                 <div className="flex items-start gap-2 text-sm">
                   <AlertTriangle size={14} className="text-destructive mt-0.5" />
@@ -368,22 +446,33 @@ function BugDetail({
                   </div>
                 </div>
               )}
-              {!bug.url && !bug.userAgent && !bug.viewportSize && (
+              {!bug.siteUrl && !bug.flowId && !bug.url && !bug.userAgent && !bug.viewportSize && (
                 <p className="text-sm text-muted-foreground">No browser metadata captured.</p>
               )}
             </CardContent>
           </Card>
         </div>
 
+        {remote && <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Triage notes</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2"><label htmlFor="bug-assigned-to" className="text-sm font-medium">Assigned to</label><Input id="bug-assigned-to" value={assignedTo} onChange={(event) => setAssignedTo(event.target.value)} placeholder="Name or team" /></div>
+            <div className="space-y-2"><label htmlFor="bug-internal-notes" className="text-sm font-medium">Internal notes</label><Textarea id="bug-internal-notes" value={internalNotes} onChange={(event) => setInternalNotes(event.target.value)} placeholder="Record the next investigation step or follow-up." rows={4} /></div>
+            <div className="flex items-center gap-3"><Button type="button" onClick={saveTriage} disabled={savingTriage}>{savingTriage ? "Saving…" : "Save triage"}</Button>{triageSaved && <span role="status" className="text-sm text-emerald-700">Triage saved.</span>}</div>
+          </CardContent>
+        </Card>}
+
         {/* Screenshot */}
         {bug.screenshot && (
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Screenshot</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <img src={bug.screenshot} alt="Bug screenshot" className="w-full rounded-lg border border-border" />
-            </CardContent>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Screenshot</CardTitle></CardHeader>
+            <CardContent><img src={bug.screenshot} alt="Bug screenshot" className="w-full rounded-lg border border-border" /></CardContent>
+          </Card>
+        )}
+        {bug.video && (
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Screen recording</CardTitle></CardHeader>
+            <CardContent><video src={bug.video} controls className="w-full rounded-lg border border-border bg-black" aria-label="Bug screen recording" /></CardContent>
           </Card>
         )}
       </div>
