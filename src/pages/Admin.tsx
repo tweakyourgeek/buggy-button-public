@@ -408,10 +408,12 @@ function BugDetail({
 
           <Card>
             <CardContent className="p-4 space-y-3">
+              {bug.siteUrl && <div className="flex items-center gap-2 text-sm"><ExternalLink size={14} className="text-muted-foreground" /><span className="text-muted-foreground">Site:</span><span className="text-foreground truncate">{bug.siteUrl}</span></div>}
+              {bug.flowId && <div className="flex items-center gap-2 text-sm"><span className="text-muted-foreground">Flow:</span><span className="text-foreground">{bug.flowId}</span></div>}
               {bug.url && (
                 <div className="flex items-center gap-2 text-sm">
                   <ExternalLink size={14} className="text-muted-foreground" />
-                  <span className="text-muted-foreground">URL:</span>
+                  <span className="text-muted-foreground">Page:</span>
                   <span className="text-foreground truncate">{bug.url}</span>
                 </div>
               )}
@@ -444,7 +446,7 @@ function BugDetail({
                   </div>
                 </div>
               )}
-              {!bug.url && !bug.userAgent && !bug.viewportSize && (
+              {!bug.siteUrl && !bug.flowId && !bug.url && !bug.userAgent && !bug.viewportSize && (
                 <p className="text-sm text-muted-foreground">No browser metadata captured.</p>
               )}
             </CardContent>

@@ -118,6 +118,8 @@ export default function BetaIntake() {
         screenshot: capture || undefined,
         video: videoCapture || undefined,
         pageUrl: pageUrl || document.referrer || window.location.href,
+        siteUrl: siteUrl || undefined,
+        flowId: flowId || undefined,
         userAgent: navigator.userAgent,
         viewportSize: `${window.innerWidth}x${window.innerHeight}`,
       });

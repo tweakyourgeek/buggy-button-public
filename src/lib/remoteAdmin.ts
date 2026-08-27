@@ -25,6 +25,8 @@ function normalize(report: Record<string, unknown>): BugReport {
     createdAt: new Date(String(report.created_at || report.createdAt || "")),
     updatedAt: new Date(String(report.updated_at || report.updatedAt || "")),
     url: report.url ? String(report.url) : undefined,
+    siteUrl: report.site_url ? String(report.site_url) : undefined,
+    flowId: report.flow_id ? String(report.flow_id) : undefined,
     userAgent: report.user_agent ? String(report.user_agent) : undefined,
     viewportSize: report.viewport_size ? String(report.viewport_size) : undefined,
     projectName: report.project_name ? String(report.project_name) : undefined,

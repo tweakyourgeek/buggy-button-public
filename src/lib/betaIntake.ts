@@ -16,6 +16,8 @@ export interface BetaReport {
   screenshot?: string;
   video?: string;
   pageUrl?: string;
+  siteUrl?: string;
+  flowId?: string;
   userAgent?: string;
   viewportSize?: string;
   createdAt: string;
@@ -95,6 +97,8 @@ export const betaIntake = {
           screenshot: report.screenshot_path ? String(report.screenshot_path) : undefined,
           video: report.video_path ? String(report.video_path) : undefined,
           pageUrl: report.url ? String(report.url) : undefined,
+          siteUrl: report.site_url ? String(report.site_url) : undefined,
+          flowId: report.flow_id ? String(report.flow_id) : undefined,
           userAgent: report.user_agent ? String(report.user_agent) : undefined,
           viewportSize: report.viewport_size ? String(report.viewport_size) : undefined,
           createdAt: String(report.created_at || ""),
@@ -130,6 +134,8 @@ export const betaIntake = {
       if (report.screenshot) data.append("screenshot", report.screenshot);
       if (report.video) data.append("video", report.video);
       if (report.pageUrl) data.append("pageUrl", report.pageUrl);
+      if (report.siteUrl) data.append("siteUrl", report.siteUrl);
+      if (report.flowId) data.append("flowId", report.flowId);
       if (report.userAgent) data.append("userAgent", report.userAgent);
       if (report.viewportSize) data.append("viewportSize", report.viewportSize);
       return request<BetaReport>(`/sessions/${encodeURIComponent(sessionId)}/reports`, { method: "POST", body: data });
